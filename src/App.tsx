@@ -374,6 +374,13 @@ export default function App() {
     }
   }, [isLoggedIn, currentUser?.id])
 
+  // Re-sync overlaps whenever navigating to overlaps tab
+  useEffect(() => {
+    if (activePage === 'overlaps' && getAuthToken()) {
+      syncOverlaps()
+    }
+  }, [activePage])
+
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     return loadUserNotifications(currentUser?.id)
   })
@@ -1470,7 +1477,7 @@ export default function App() {
     return <Login onLogin={handleLogin} initialRole={currentRole} />
   }
 
-  const selectedComplaint = complaints.find((c) => c.id === selectedCaseId)
+  const selectedComplaint = complaints.find((c) => c.id === selectedCaseId) || initialComplaints.find((c) => c.id === selectedCaseId)
   const activeOverlaps = overlapsList || overlaps
   const activeThreshold = appSettings.similarityThreshold ?? 75
   const pendingOverlapsCount = activeOverlaps.filter((o) =>

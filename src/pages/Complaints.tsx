@@ -461,8 +461,18 @@ export function SubmitComplaint({
       } else if (res && res.status === 'invalid_input') {
         setAiResult(null)
         setAiError('Input text was insufficient for classification.')
+      } else if (res && res.status === 'unavailable') {
+        setAiResult(null)
+        setAiError(
+          res.reviewReasons?.[0] ||
+          'AI classification models are currently unavailable. You can select category and bureau manually.'
+        )
       } else {
-        setAiResult(res)
+        setAiResult(null)
+        setAiError(
+          res?.reviewReasons?.[0] ||
+          'AI classification service encountered an issue. You can continue selecting category and bureau manually.'
+        )
       }
     } catch (err) {
       console.warn('AI preview endpoint unavailable:', err)
@@ -521,19 +531,25 @@ export function SubmitComplaint({
     }
   }
 
+  // Category default bureau mapping (matches AICTE backend)
+  const CATEGORY_DEFAULT_BUREAU: Record<string, Bureau> = {
+    'Fee Regulation': 'PGRC',
+    'Faculty Norms': 'Approval',
+    'Infrastructure': 'Approval',
+    'Admission Irregularity': 'Approval',
+    'Certificate Delay': 'Academic',
+    'Curriculum': 'Academic',
+    'Unapproved Courses': 'Approval',
+    'Harassment & Ragging': 'PGRC',
+    'Skill Certification': 'SB',
+  }
+
   // Auto suggest Bureau when Category changes
   const handleCategoryChange = (cat: string) => {
     setCategory(cat)
-    if (cat.includes('Fee') || cat.includes('Ragging') || cat.includes('Harassment')) {
-      setBureau('PGRC')
-    } else if (cat.includes('Unapproved') || cat.includes('Faculty') || cat.includes('Admission')) {
-      setBureau('RB')
-    } else if (cat.includes('Infrastructure') || cat.includes('Facility')) {
-      setBureau('Approval')
-    } else if (cat.includes('Curriculum') || cat.includes('Syllabus')) {
-      setBureau('Academic')
-    } else if (cat.includes('Stipend') || cat.includes('Skill')) {
-      setBureau('SB')
+    const suggested = CATEGORY_DEFAULT_BUREAU[cat]
+    if (suggested) {
+      setBureau(suggested)
     }
   }
 

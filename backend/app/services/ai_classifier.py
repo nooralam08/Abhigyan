@@ -64,6 +64,62 @@ MULTI_BUREAU_RULES = {
 VALID_BUREAUS = {"RB", "PGRC", "Approval", "Academic", "SB", "EO"}
 VALID_PRIORITIES = {"Critical", "High", "Medium", "Low"}
 
+# Priority urgency keyword rules for domain escalation
+CRITICAL_PRIORITY_KEYWORDS = [
+    "suicide", "poisoning", "food poisoning", "hospitalized", "hospital", "collapsed",
+    "emergency", "threat to life", "physical assault", "sexual harassment", "rape",
+    "posh", "death", "violence", "severe beating", "bleeding"
+]
+
+HIGH_PRIORITY_KEYWORDS = [
+    "ragging", "admit card", "exam tomorrow", "hall ticket", "extortion",
+    "capitation", "blackmail", "illegal detention", "struck off", "derecognized",
+    "unapproved", "contaminated food", "maggots", "insects in food", "rat in food",
+    "unhygienic", "spoiled food", "fungus"
+]
+
+LOW_PRIORITY_KEYWORDS = [
+    "minor", "suggestion", "spelling", "elective", "canteen menu", "wifi speed",
+    "routine inquiry", "sports equipment", "library hours"
+]
+
+
+def _resolve_priority(
+    predicted_priority: str,
+    priority_confidence: float,
+    text: str
+) -> tuple[str, bool, List[str]]:
+    """
+    Resolve grievance statutory priority combining ML model prediction with safety heuristics.
+    Returns: (priority, needs_manual_review, reasons)
+    """
+    text_lower = text.lower()
+    reasons = []
+
+    # Critical triggers (emergency/life safety/acute harm) take precedence
+    if any(kw in text_lower for kw in CRITICAL_PRIORITY_KEYWORDS):
+        if predicted_priority != "Critical":
+            reasons.append("priority_escalated_to_critical_due_to_safety_keywords")
+        return "Critical", False, reasons
+
+    # High triggers (acute academic, financial, or severe infrastructure deficits)
+    if any(kw in text_lower for kw in HIGH_PRIORITY_KEYWORDS):
+        if predicted_priority in ("Medium", "Low"):
+            reasons.append("priority_escalated_to_high_due_to_urgency_keywords")
+            return "High", False, reasons
+        return predicted_priority, False, reasons
+
+    # Low triggers (minor administrative / suggestions)
+    if any(kw in text_lower for kw in LOW_PRIORITY_KEYWORDS) and predicted_priority in ("Medium", "Low"):
+        return "Low", False, reasons
+
+    # Fallback to model prediction
+    if priority_confidence < 0.35:
+        reasons.append("low_priority_confidence")
+        return predicted_priority, True, reasons
+
+    return predicted_priority, False, reasons
+
 
 class _ModelCache:
     """Thread-safe lazy-loading cache for ML model artifacts."""
@@ -278,6 +334,11 @@ def classify_complaint(
             predicted_category, combined_text, predicted_bureau
         )
 
+        # Priority resolution with safety and domain urgency heuristics
+        resolved_priority, prio_manual_review, prio_reasons = _resolve_priority(
+            predicted_priority, priority_confidence, combined_text
+        )
+
         review_reasons = []
         needs_manual_review = False
 
@@ -290,10 +351,13 @@ def classify_complaint(
             needs_manual_review = True
             review_reasons.extend(bureau_reasons)
 
+        if prio_reasons:
+            review_reasons.extend(prio_reasons)
+
         return {
             "category": predicted_category,
             "bureau": suggested_bureau,
-            "priority": predicted_priority,
+            "priority": resolved_priority,
             "confidence": round(category_confidence, 4),
             "priority_confidence": round(priority_confidence, 4),
             "needs_manual_review": needs_manual_review,

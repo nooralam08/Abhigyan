@@ -145,3 +145,57 @@ def test_category_and_bureau_validity_across_categories():
         assert res["category"] in VALID_CATEGORIES
         assert res["bureau"] in VALID_BUREAUS
         assert res["priority"] in VALID_PRIORITIES
+
+
+def test_mess_food_classified_as_infrastructure_and_approval_bureau():
+    """Verify mess food grievances classify as Infrastructure under Approval Bureau."""
+    title = "Contaminated hostel mess food and unhygienic cafeteria"
+    description = (
+        "Hostel mess is serving stale food causing severe stomach infections. "
+        "Drinking water coolers have fungus and students have fallen ill."
+    )
+    res = classify_complaint(title=title, description=description)
+    assert res is not None
+    assert res["status"] == "success"
+    assert res["category"] == "Infrastructure"
+    assert res["bureau"] == "Approval"
+    assert res["confidence"] >= 0.40
+    # Ensure it is NOT misclassified as Fee Regulation or PGRC
+    assert res["category"] != "Fee Regulation"
+    assert res["bureau"] != "PGRC"
+
+
+def test_harassment_and_ragging_bureau_routing_rules():
+    """Verify multi-bureau rules route sexual harassment to EO and ragging to PGRC."""
+    # Sexual / POSH harassment should route to EO Bureau
+    posh_res = classify_complaint(
+        title="POSH sexual harassment complaint against department HOD",
+        description="Female student was subjected to sexual harassment and intimidation during lab examination."
+    )
+    assert posh_res["category"] == "Harassment & Ragging"
+    assert posh_res["bureau"] == "EO"
+
+    # Senior physical ragging in hostel should route to PGRC Bureau
+    ragging_res = classify_complaint(
+        title="Physical ragging and harassment in boys hostel by senior batch",
+        description="Senior students entered freshers dormitory at midnight and beat junior students."
+    )
+    assert ragging_res["category"] == "Harassment & Ragging"
+    assert ragging_res["bureau"] == "PGRC"
+
+
+def test_priority_escalation_heuristics():
+    """Verify emergency safety keywords escalate grievance to Critical or High priority."""
+    # Acute poisoning/hospitalization -> Critical
+    poisoning_res = classify_complaint(
+        title="Mass food poisoning in hostel mess",
+        description="Contaminated water led to acute food poisoning with 10 students hospitalized in emergency."
+    )
+    assert poisoning_res["priority"] == "Critical"
+
+    # Urgent academic blockade (admit card withheld) -> High
+    admit_res = classify_complaint(
+        title="Admit card withheld one day before exam",
+        description="College withheld hall ticket demanding extra illegal fees before exam tomorrow."
+    )
+    assert admit_res["priority"] in ("Critical", "High")
