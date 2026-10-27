@@ -66,7 +66,10 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL must use PostgreSQL (postgresql:// or postgresql+psycopg2://).")
 
         query = dict(url.query)
-        query.setdefault("sslmode", "require")
+        # Remote Supabase connections require SSL (sslmode=require).
+        # Local development and test suites against localhost loopback default to sslmode=disable unless explicitly set.
+        is_local = (url.host or "").lower() in {"localhost", "127.0.0.1", "::1"}
+        query.setdefault("sslmode", "disable" if is_local else "require")
         return url.set(query=query)
 
     @property

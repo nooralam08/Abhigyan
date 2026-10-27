@@ -336,9 +336,9 @@ export default function Overlaps({
     <div className="space-y-6">
       {/* Page Title & Methodology Note */}
       <PageTitle
-        title="Cross-Bureau Overlap Detection Centre"
-        sub="Corroboration matching to surface parallel grievances across Regulation Bureau (RB), Public Grievance Cell (PGRC), and Approval Bureau"
-        tag="Cross-Bureau Engine"
+        title="Cross-Bureau Overlaps"
+        sub="Detect and review parallel grievances filed across AICTE bureaus"
+        tag="Overlap Engine"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-lg bg-navy-50 px-3 py-1.5 text-xs font-semibold text-navy-800 border border-navy-200">
@@ -354,7 +354,7 @@ export default function Overlaps({
               </button>
             )}
             <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200">
-              Precomputed Heuristic Index
+              Heuristic Matching
             </span>
           </div>
         }

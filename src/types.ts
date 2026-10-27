@@ -38,6 +38,7 @@ export interface TimelineEvent {
 
 export interface Assignment {
   officer: string
+  assignedUserId?: string
   date: string
   by: string
   byRole?: Role

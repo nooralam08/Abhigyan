@@ -262,8 +262,8 @@ export default function Login({ onLogin, initialRole = 'Admin' }: LoginProps) {
         </div>
 
         <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
-          <span>AICTE Prototype Build</span>
-          <span>FastAPI + PostgreSQL Integrated</span>
+          <span>AICTE Redressal Portal</span>
+          <span>Official Portal</span>
         </div>
       </div>
 
@@ -285,7 +285,7 @@ export default function Login({ onLogin, initialRole = 'Admin' }: LoginProps) {
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {authMode === 'login'
-                ? 'Select a verified role perspective to explore, or enter your official AICTE credentials.'
+                ? 'Select a role perspective or enter your official credentials.'
                 : 'Create an official complainant account to submit and track AICTE institution grievances.'}
             </p>
           </div>
@@ -305,7 +305,7 @@ export default function Login({ onLogin, initialRole = 'Admin' }: LoginProps) {
               }`}
             >
               <LogIn size={14} />
-              <span>Official &amp; Demo Sign In</span>
+              <span>Sign In</span>
             </button>
             <button
               type="button"
@@ -320,7 +320,7 @@ export default function Login({ onLogin, initialRole = 'Admin' }: LoginProps) {
               }`}
             >
               <UserPlus size={14} />
-              <span>Register Citizen Account</span>
+              <span>Register Complainant</span>
             </button>
           </div>
 
@@ -333,7 +333,7 @@ export default function Login({ onLogin, initialRole = 'Admin' }: LoginProps) {
           <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-3 text-xs text-sky-950 flex items-start gap-2.5">
             <Info size={16} className="text-sky-700 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <strong className="font-semibold text-sky-900">FastAPI Backend Authentication:</strong> Credentials and role tokens are validated directly against PostgreSQL. Permissions and bureau access are strictly derived from the verified server response.
+              <strong className="font-semibold text-sky-900">Secure Access:</strong> Role credentials and permissions are validated against central authority records.
             </div>
           </div>
 
@@ -553,10 +553,10 @@ export default function Login({ onLogin, initialRole = 'Admin' }: LoginProps) {
               >
                 <div className="border-b border-slate-100 pb-2.5">
                   <span className="text-xs font-bold text-slate-800">
-                    Citizen / Complainant Profile Details
+                    Complainant Profile Details
                   </span>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Your account will be verified directly against PostgreSQL and assigned a persistent Complainant ID.
+                    Your account will be registered and assigned an official Complainant ID.
                   </p>
                 </div>
 
@@ -698,19 +698,19 @@ export default function Login({ onLogin, initialRole = 'Admin' }: LoginProps) {
                     {isLoading ? (
                       <>
                         <Loader2 size={16} className="animate-spin shrink-0" />
-                        <span>Registering Account in PostgreSQL...</span>
+                        <span>Registering Account...</span>
                       </>
                     ) : (
                       <>
                         <UserPlus size={16} className="shrink-0" />
-                        <span>Create Citizen Account &amp; Sign In</span>
+                        <span>Register &amp; Sign In</span>
                       </>
                     )}
                   </button>
                 </div>
 
                 <div className="pt-2 text-center border-t border-slate-100">
-                  <span className="text-xs text-slate-500">Already have an AICTE account? </span>
+                  <span className="text-xs text-slate-500">Already have an account? </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -728,7 +728,7 @@ export default function Login({ onLogin, initialRole = 'Admin' }: LoginProps) {
 
           {/* Footer Metadata */}
           <div className="text-center text-[11px] text-slate-400">
-            AICTE Official Complaint Surveillance &amp; SLA Management System • 2026
+            All India Council for Technical Education (AICTE) • 2026
           </div>
         </div>
       </div>

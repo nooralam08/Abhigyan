@@ -55,6 +55,7 @@ import {
   fmt,
   getDaysRemaining,
   getInstitution,
+  getLeastLoadedOfficer,
   getOfficersForBureau,
   getSlaDaysForPriority,
   instName,
@@ -105,10 +106,12 @@ export function ComplaintsPage({
     }
     if (currentRole === 'Officer') {
       // Officers can view ONLY cases explicitly assigned to them
+      if (c.assignedUserId) {
+        return Boolean(currentUser?.id && c.assignedUserId === currentUser.id)
+      }
       return (
         c.officer === currentUser?.name ||
-        resolveOfficerName(c) === currentUser?.name ||
-        Boolean(currentUser?.id && c.assignedUserId === currentUser.id)
+        resolveOfficerName(c) === currentUser?.name
       )
     }
     if (currentRole === 'BureauAdmin') {
@@ -185,17 +188,17 @@ export function ComplaintsPage({
       <PageTitle
         title={
           currentRole === 'Complainant'
-            ? 'My Filed Grievances & Dockets'
+            ? 'My Grievances'
             : currentRole === 'Officer'
-            ? 'Officer Grievance Worklist'
-            : 'All Complaints Directory'
+            ? 'Assigned Grievances'
+            : 'Complaints Directory'
         }
         sub={
           currentRole === 'Complainant'
-            ? 'Review the status, official timelines, and documentation for grievances filed under your account'
-            : 'Consolidated database of institution grievances, regulatory violations, and active inquiries'
+            ? 'Track status, milestones, and responses for your filed grievances'
+            : 'Directory of institution grievances, regulatory violations, and active inquiries'
         }
-        tag={currentRole === 'Complainant' ? 'Citizen Portal' : 'AICTE Master Directory'}
+        tag={currentRole === 'Complainant' ? 'Citizen Portal' : 'AICTE Directory'}
         action={
           <div className="flex flex-wrap items-center gap-2">
             {onNavigateToSubmit && (
@@ -207,7 +210,7 @@ export function ComplaintsPage({
               >
                 <FilePlus size={14} />
                 <span>
-                  {currentRole === 'Complainant' ? 'File New Grievance' : 'Register New Case'}
+                  {currentRole === 'Complainant' ? 'File Grievance' : 'Register Case'}
                 </span>
               </Button>
             )}
@@ -227,9 +230,9 @@ export function ComplaintsPage({
           <div className="flex items-start gap-3">
             <UserCheck size={18} className="text-emerald-700 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-emerald-950 space-y-1">
-              <div className="font-bold">Citizen Perspective: Personal Grievance Docket Access</div>
+              <div className="font-bold">Personal Grievance Docket</div>
               <p className="text-emerald-900/80 leading-relaxed">
-                You are viewing grievances registered by your account ({currentUser?.name}). You may track inquiry milestones, submit supplementary information, and access permitted public orders. Internal administrative records remain protected.
+                Viewing grievances registered under your account ({currentUser?.name}). You can track milestone progress, submit supplementary information, and access public orders.
               </p>
             </div>
           </div>
@@ -241,9 +244,9 @@ export function ComplaintsPage({
           <div className="flex items-start gap-3">
             <UserCog size={18} className="text-teal-700 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-teal-950 space-y-1">
-              <div className="font-bold">Officer Perspective: Assigned Dockets ({currentUser?.name})</div>
+              <div className="font-bold">Assigned Dockets ({currentUser?.name})</div>
               <p className="text-teal-900/80 leading-relaxed">
-                As the designated investigating officer, you can log scrutiny remarks, upload inquiry memos, update permitted statuses, and review potential overlaps with parallel bureau filings.
+                Designated investigating officer view. Log scrutiny remarks, upload inquiry memos, update permitted statuses, and review potential cross-bureau overlaps.
               </p>
             </div>
           </div>
@@ -288,7 +291,7 @@ export function ComplaintsPage({
                 <option value="All">All Statuses</option>
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    Status: {s}
+                    {s}
                   </option>
                 ))}
               </select>
@@ -301,10 +304,10 @@ export function ComplaintsPage({
                 className="w-full rounded-lg border border-slate-300 bg-white p-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-navy-600 focus:outline-none"
               >
                 <option value="All">All Priorities</option>
-                <option value="Critical">Critical Priority</option>
-                <option value="High">High Priority</option>
-                <option value="Medium">Medium Priority</option>
-                <option value="Low">Low Priority</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
               </select>
             </div>
 
@@ -321,7 +324,7 @@ export function ComplaintsPage({
                   )}
                   {OFFICERS.map((o) => (
                     <option key={o} value={o}>
-                      Officer: {o}
+                      {o}
                     </option>
                   ))}
                 </select>
@@ -332,7 +335,7 @@ export function ComplaintsPage({
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
             <span>
               Showing <strong>{filtered.length}</strong> of <strong>{roleScopedComplaints.length}</strong>{' '}
-              {currentRole === 'Complainant' ? 'personal complaints' : 'total files'}
+              {currentRole === 'Complainant' ? 'grievances' : 'records'}
             </span>
             {(q || bureau !== 'All' || status !== 'All' || priority !== 'All' || complainant !== 'All' || officerFilter !== 'All') && (
               <button
@@ -340,7 +343,7 @@ export function ComplaintsPage({
                 className="flex items-center gap-1 font-semibold text-teal-700 hover:underline"
               >
                 <RotateCcw size={12} />
-                <span>Reset Filters</span>
+                <span>Reset</span>
               </button>
             )}
           </div>
@@ -640,8 +643,9 @@ export function SubmitComplaint({
     dueDate.setDate(dueDate.getDate() + slaDays)
     const dueStr = dueDate.toISOString().slice(0, 10)
 
-    const defaultOfficer =
-      bureau === 'RB' ? 'Anita Verma' : bureau === 'Approval' ? 'Suresh Patel' : 'Rajesh Kumar'
+    const autoAssignment = getLeastLoadedOfficer(bureau, complaints, userProfiles)
+    const assignedOfficerName = autoAssignment.officer
+    const assignedOfficerId = autoAssignment.assignedUserId
 
     let newCase: Complaint = {
       id: newCaseId,
@@ -650,7 +654,8 @@ export function SubmitComplaint({
       bureau,
       category,
       priority,
-      officer: defaultOfficer,
+      officer: assignedOfficerName,
+      assignedUserId: assignedOfficerId,
       status: 'Pending',
       date: TODAY,
       due: dueStr,
@@ -677,27 +682,42 @@ export function SubmitComplaint({
           role: currentRole,
           note: 'Portal intake verified; acknowledgement issued to complainant.',
         },
-        {
-          label: `Assigned to ${defaultOfficer} (${bureau} Bureau)`,
-          date: `${TODAY} 10:45`,
-          by: 'Central Allocation Engine',
-          role: 'Admin',
-          note: `Automated routing based on category: ${category}. Target statutory SLA: ${slaDays} days.`,
-        },
+        assignedOfficerName !== 'Unassigned'
+          ? {
+              label: `Assigned to ${assignedOfficerName} (${bureau} Bureau)`,
+              date: `${TODAY} 10:45`,
+              by: 'Central Allocation Engine',
+              role: 'Admin',
+              note: `Automated routing based on category: ${category}. Target statutory SLA: ${slaDays} days.`,
+            }
+          : {
+              label: `Pending Officer Allocation (${bureau} Bureau)`,
+              date: `${TODAY} 10:45`,
+              by: 'Central Allocation Engine',
+              role: 'Admin',
+              note: `No active handling officers currently available for ${bureau} Bureau. Case queued for manual assignment.`,
+            },
       ],
-      assignments: [
-        {
-          officer: defaultOfficer,
-          date: TODAY,
-          by: 'Central Allocation Engine',
-          byRole: 'Admin',
-          previousOfficer: 'Intake Registration Cell',
-          reason: `Initial category-based statutory case allocation to ${bureau} Bureau.`,
-          bureau,
-          type: 'initial',
-        },
-      ],
-      nextAction: `Jurisdiction verification and preliminary scrutiny by ${bureau} Cell`,
+      assignments:
+        assignedOfficerName !== 'Unassigned'
+          ? [
+              {
+                officer: assignedOfficerName,
+                assignedUserId: assignedOfficerId,
+                date: TODAY,
+                by: 'Central Allocation Engine',
+                byRole: 'Admin',
+                previousOfficer: 'Intake Registration Cell',
+                reason: `Initial category-based statutory case allocation to ${bureau} Bureau.`,
+                bureau,
+                type: 'initial',
+              },
+            ]
+          : [],
+      nextAction:
+        assignedOfficerName !== 'Unassigned'
+          ? `Jurisdiction verification and preliminary scrutiny by ${bureau} Cell`
+          : `Officer allocation pending for ${bureau} Bureau`,
       lastActionDate: TODAY,
     }
 
@@ -807,7 +827,7 @@ export function SubmitComplaint({
               className="text-xs"
             >
               <Eye size={14} />
-              <span>Track Docket Lifecycle</span>
+              <span>Track Case</span>
             </Button>
             <Button
               variant="outline"
@@ -822,10 +842,10 @@ export function SubmitComplaint({
               className="text-xs text-slate-700"
             >
               <FilePlus size={14} />
-              <span>Submit Another Grievance</span>
+              <span>Submit Another</span>
             </Button>
             <Button variant="ghost" size="sm" onClick={onCancel} className="text-xs text-slate-600">
-              <span>Return to Directory</span>
+              <span>Back to Directory</span>
             </Button>
           </div>
         </Card>
@@ -839,11 +859,11 @@ export function SubmitComplaint({
         <div>
           <h2 className="text-lg font-bold text-slate-900">
             {currentRole === 'Complainant'
-              ? 'Lodge Formal Institutional Grievance'
-              : 'Register New Complaint File'}
+              ? 'Submit Grievance'
+              : 'Register Grievance'}
           </h2>
           <p className="text-xs text-slate-500">
-            AICTE statutory grievance registration with permanent institution verification and duplicate detection
+            Official grievance registration with permanent institution verification
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={onCancel} className="text-xs">
@@ -852,12 +872,12 @@ export function SubmitComplaint({
         </Button>
       </div>
 
-      {/* Legal & Demonstration Advisory */}
+      {/* Statutory Redressal Advisory */}
       <Card className="border-l-4 border-l-navy-800 bg-navy-50/40 p-4">
         <div className="flex items-start gap-3">
           <Shield size={18} className="text-navy-700 mt-0.5 flex-shrink-0" />
           <div className="text-xs text-navy-950 space-y-1">
-            <div className="font-bold">Official Statutory Redressal Mechanism</div>
+            <div className="font-bold">Statutory Redressal Notice</div>
             <p className="text-slate-600 leading-relaxed">
               Complaints submitted are audited across the Regulation Bureau (RB) and Public Grievance Redressal Cell (PGRC). False affidavits or frivolous claims are subject to statutory scrutiny under AICTE regulations.
             </p>
@@ -866,11 +886,11 @@ export function SubmitComplaint({
       </Card>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Section 1: Institution Permanent Identification */}
+        {/* Section 1: Institution Details */}
         <Card>
           <CardHeader
-            title="1. Technical Campus &amp; Permanent ID Verification"
-            sub="Link to stable AICTE Permanent Institute ID to aggregate historical records"
+            title="1. Institution Details"
+            sub="Select institution and verify AICTE Permanent ID"
           />
 
           <div className="space-y-4">
@@ -972,10 +992,10 @@ export function SubmitComplaint({
           </Card>
         )}
 
-        {/* Section 2: Complainant Identification */}
+        {/* Section 2: Complainant Details */}
         <Card>
           <CardHeader
-            title="2. Complainant Registry &amp; Affiliation"
+            title="2. Complainant Details"
             sub="Official contact details for statutory communications and hearing notices"
           />
 
@@ -1040,7 +1060,7 @@ export function SubmitComplaint({
           </div>
         </Card>
 
-        {/* Section 3: Grievance Classification & Substance */}
+        {/* Section 3: Grievance Details */}
         <Card>
           <CardHeader
             title="3. Grievance Substance &amp; Classification"
@@ -1058,7 +1078,7 @@ export function SubmitComplaint({
                   onClick={() => triggerAiClassification(true)}
                   disabled={isAiLoading || title.trim().length < 10 || description.trim().length < 20}
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 hover:text-indigo-900 disabled:opacity-40 transition"
-                  title="Run AI classification prediction on entered text"
+                  title="Run automated classification prediction on entered text"
                 >
                   {isAiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                   <span>Analyze with AI</span>
@@ -1101,11 +1121,11 @@ export function SubmitComplaint({
                     <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <span>AI Classification Assistant</span>
                       <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 font-semibold">
-                        Prototype Advisory
+                        Automated Suggestion
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      TF-IDF &amp; Logistic Regression real-time recommendation
+                      Automated category and bureau routing recommendations
                     </div>
                   </div>
                 </div>
@@ -1232,12 +1252,12 @@ export function SubmitComplaint({
                         {aiApplied ? (
                           <>
                             <CheckCircle2 size={13} className="text-emerald-600" />
-                            <span>Suggestions Applied (Editable Below)</span>
+                            <span>Suggestions Applied</span>
                           </>
                         ) : (
                           <>
                             <Sparkles size={13} />
-                            <span>Apply AI Suggestions</span>
+                            <span>Apply Suggestions</span>
                           </>
                         )}
                       </Button>
@@ -2580,7 +2600,7 @@ export function DetailsPage({
         <Modal
           open={isAssignModalOpen}
           onClose={() => setIsAssignModalOpen(false)}
-          title={`Reassign Docket ${c.id} to ${pendingOfficer}`}
+          title={`Reassign Docket ${c.id}`}
         >
           <form onSubmit={handleConfirmAssignSubmit} className="space-y-4 text-xs">
             <p className="text-slate-600">
@@ -2592,7 +2612,7 @@ export function DetailsPage({
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Mandatory Reassignment Reason / Justification *
+                Reassignment Reason *
               </label>
               <textarea
                 required
@@ -2603,7 +2623,7 @@ export function DetailsPage({
                 className="w-full rounded-lg border border-slate-300 p-2 text-xs focus:border-navy-600 focus:outline-none"
               />
               <span className="text-[10px] text-slate-400 mt-1 block">
-                This reason will be permanently archived into the statutory audit trail.
+                This reason will be recorded in the audit trail.
               </span>
             </div>
 
@@ -2618,7 +2638,7 @@ export function DetailsPage({
               </Button>
               <Button type="submit" variant="teal" size="sm">
                 <CheckCircle2 size={13} />
-                <span>Confirm &amp; Record Reassignment</span>
+                <span>Confirm Reassignment</span>
               </Button>
             </div>
           </form>
@@ -2630,7 +2650,7 @@ export function DetailsPage({
         <Modal
           open={isTransferModalOpen}
           onClose={() => setIsTransferModalOpen(false)}
-          title={`Initiate Cross-Bureau Transfer: Docket ${c.id}`}
+          title={`Transfer Docket ${c.id}`}
         >
           <form onSubmit={handleConfirmTransferSubmit} className="space-y-4 text-xs">
             <p className="text-slate-600">
@@ -2673,7 +2693,7 @@ export function DetailsPage({
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Statutory Reason for Cross-Bureau Transfer *
+                Reason for Transfer *
               </label>
               <textarea
                 required
@@ -2686,7 +2706,7 @@ export function DetailsPage({
             </div>
 
             <div className="rounded-lg bg-amber-50 p-2.5 text-[11px] text-amber-900 border border-amber-200">
-              <strong>Statutory Record:</strong> Previous Bureau ({c.bureau}), New Bureau ({transferTargetBureau}), Actor ({currentUser?.name}), Timestamp, and Reason will be indelibly saved to the audit trail.
+              <strong>Audit Notice:</strong> Bureau transfer details, user identity, and timestamp will be recorded in the case timeline.
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -2700,7 +2720,7 @@ export function DetailsPage({
               </Button>
               <Button type="submit" variant="primary" size="sm">
                 <CheckCircle2 size={13} />
-                <span>Execute Cross-Bureau Transfer</span>
+                <span>Confirm Transfer</span>
               </Button>
             </div>
           </form>
@@ -2930,7 +2950,7 @@ export function DetailsPage({
         <Modal
           open={isDocModalOpen}
           onClose={() => setIsDocModalOpen(false)}
-          title="Upload Supplementary Case Document"
+          title="Upload Case Document"
         >
           <form onSubmit={handleUploadDocumentSubmit} className="space-y-4 text-xs">
             <p className="text-slate-600">
@@ -2939,7 +2959,7 @@ export function DetailsPage({
             </p>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Select File (Optional)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Select File</label>
               <input
                 type="file"
                 onChange={(e) => {
@@ -2959,7 +2979,7 @@ export function DetailsPage({
                 className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-navy-50 file:text-navy-700 hover:file:bg-navy-100"
               />
               <span className="text-[10px] text-slate-400 mt-1 block">
-                Supports PDF, JPG, PNG, DOCX up to 10 MB. Files are stored in browser memory for local preview.
+                Supports PDF, JPG, PNG, DOCX up to 10 MB.
               </span>
             </div>
 
@@ -3002,10 +3022,6 @@ export function DetailsPage({
               )}
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 border border-slate-200">
-              Files uploaded in this demo are processed in local session memory. Cloud object storage (S3/GCS) with virus scanning will be connected via FastAPI.
-            </div>
-
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <Button
                 type="button"
@@ -3017,7 +3033,7 @@ export function DetailsPage({
               </Button>
               <Button type="submit" variant="primary" size="sm">
                 <Upload size={13} />
-                <span>Save to Docket</span>
+                <span>Upload Document</span>
               </Button>
             </div>
           </form>

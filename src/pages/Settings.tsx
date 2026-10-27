@@ -120,7 +120,7 @@ export default function Settings({
           return
         }
         setSavedBanner(
-          `Configuration successfully persisted to backend database. Configured SLA windows (Critical: ${slaCritical}d, High: ${slaHigh}d, Medium: ${slaMedium}d) and overlap threshold (${similarityThreshold}%) are now active across the system.`
+          `Settings saved successfully. SLA windows and overlap threshold (${similarityThreshold}%) are now active.`
         )
         setTimeout(() => setSavedBanner(null), 7000)
       } catch (err: unknown) {
@@ -135,7 +135,7 @@ export default function Settings({
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updatedSettings))
       setSavedBanner(
-        `Configuration successfully persisted to ${SETTINGS_STORAGE_KEY}. Configured SLA windows (Critical: ${slaCritical}d, High: ${slaHigh}d, Medium: ${slaMedium}d) and overlap threshold (${similarityThreshold}%) are now active for new complaint filings.`
+        `Settings saved successfully. SLA windows and overlap threshold (${similarityThreshold}%) are now active.`
       )
       setTimeout(() => setSavedBanner(null), 7000)
     } catch {
@@ -162,7 +162,7 @@ export default function Settings({
           setSlaMedium(DEFAULT_SETTINGS.slaMedium)
           setAutoEscalate(DEFAULT_SETTINGS.autoEscalate)
           setEmailAlerts(DEFAULT_SETTINGS.emailAlerts)
-          setSavedBanner('Configuration successfully reset to demonstration default parameters on backend.')
+          setSavedBanner('Settings reset to defaults successfully.')
           setTimeout(() => setSavedBanner(null), 5000)
         } else {
           setErrorBanner('Reset failed: Server rejected settings reset.')
@@ -185,7 +185,7 @@ export default function Settings({
 
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(DEFAULT_SETTINGS))
-      setSavedBanner('Configuration successfully reset to demonstration default parameters.')
+      setSavedBanner('Settings reset to defaults successfully.')
       setTimeout(() => setSavedBanner(null), 5000)
     } catch {
       setErrorBanner('Storage Error: Unable to reset configuration.')
@@ -195,15 +195,15 @@ export default function Settings({
   return (
     <div className="space-y-6 max-w-5xl">
       <PageTitle
-        title="System &amp; Bureau Settings"
-        sub="Configure cross-bureau overlap detection thresholds, statutory SLA rules, and alert mechanisms"
+        title="System Settings"
+        sub="Configure overlap detection thresholds, SLA rules, and alert preferences"
       />
 
       {!isAuthorized && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800 shadow-2xs">
           <Lock size={16} className="text-amber-600 shrink-0" />
           <span>
-            Read-Only Mode: You are viewing settings as <strong>{currentRole}</strong> ({currentUser?.bureau || 'Bureau'}). Only System Administrators (Executive Office / All Bureaus) hold authority to modify global Bureau SLA windows and overlap similarity thresholds.
+            Read-Only: Viewing settings as <strong>{currentRole}</strong>. Only System Administrators can modify system SLA windows and overlap thresholds.
           </span>
         </div>
       )}

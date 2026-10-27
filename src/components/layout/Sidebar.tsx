@@ -139,7 +139,7 @@ export default function Sidebar({
           { id: 'institutions', label: 'Institutions', icon: Building2 },
           {
             id: 'overlaps',
-            label: 'Overlap Detection',
+            label: 'Overlaps',
             icon: GitMerge,
             badge: pendingOverlapsCount > 0 ? pendingOverlapsCount : undefined,
             badgeColor: 'bg-amber-500 text-slate-900',
@@ -352,7 +352,7 @@ export default function Sidebar({
                 className="mt-2 w-full flex items-center justify-center gap-1.5 py-1 text-[11px] text-slate-300 hover:text-white hover:bg-white/10 rounded transition"
               >
                 <LogOut size={13} />
-                <span>Sign Out / Switch User</span>
+                <span>Sign Out</span>
               </button>
             )}
           </div>
@@ -377,7 +377,7 @@ export default function Sidebar({
           ) : (
             <>
               <ChevronLeft size={16} />
-              <span className="text-[11px] font-medium">Collapse Menu</span>
+              <span className="text-[11px] font-medium">Collapse</span>
             </>
           )}
         </button>

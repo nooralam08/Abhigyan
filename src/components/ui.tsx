@@ -110,6 +110,7 @@ export const Stat = ({
   trend,
   trendLabel,
   onClick,
+  className = '',
 }: {
   label: string
   value: number | string
@@ -118,29 +119,34 @@ export const Stat = ({
   trend?: string
   trendLabel?: string
   onClick?: () => void
+  className?: string
 }) => {
   const Content = (
     <Card
-      className={`relative overflow-hidden ${
+      className={`relative overflow-hidden h-full flex flex-col justify-between min-h-[148px] ${
         onClick ? 'cursor-pointer hover:border-navy-300 hover:ring-1 hover:ring-navy-100 transition-all' : ''
-      }`}
+      } ${className}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="text-2xl font-bold tracking-tight text-slate-900">
-            {typeof value === 'number' ? value.toLocaleString('en-IN') : value}
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+              {typeof value === 'number' ? value.toLocaleString('en-IN') : value}
+            </div>
+            <div className="mt-1 min-h-[2.5rem] flex items-start text-xs font-medium text-slate-500 uppercase tracking-wider leading-snug">
+              {label}
+            </div>
           </div>
-          <div className="mt-1 text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</div>
-        </div>
-        <div className={`flex-shrink-0 rounded-xl p-3 shadow-inner ${color}`}>
-          <Icon size={22} strokeWidth={2} />
+          <div className={`flex-shrink-0 rounded-xl p-3 shadow-inner ${color}`}>
+            <Icon size={22} strokeWidth={2} />
+          </div>
         </div>
       </div>
-      {(trend || trendLabel) && (
-        <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs">
+      {(trend || trendLabel) ? (
+        <div className="mt-auto pt-2.5 flex items-center gap-1.5 border-t border-slate-100 text-xs">
           {trend && (
             <span
-              className={`font-semibold ${
+              className={`font-semibold shrink-0 ${
                 trend.startsWith('+')
                   ? 'text-emerald-600'
                   : trend.startsWith('-')
@@ -151,15 +157,17 @@ export const Stat = ({
               {trend}
             </span>
           )}
-          {trendLabel && <span className="text-slate-400">{trendLabel}</span>}
+          {trendLabel && <span className="text-slate-400 truncate">{trendLabel}</span>}
         </div>
+      ) : (
+        <div className="mt-auto pt-2.5 border-t border-transparent min-h-[29px]" />
       )}
     </Card>
   )
 
   if (onClick) {
     return (
-      <div onClick={onClick} className="text-left w-full">
+      <div onClick={onClick} className="text-left w-full h-full flex flex-col">
         {Content}
       </div>
     )

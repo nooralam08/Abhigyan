@@ -281,13 +281,13 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
   return (
     <div className="space-y-6">
       <PageTitle
-        title="Reports, Trends &amp; Data Analytics"
-        sub="Statutory compliance metrics, resolution throughput, and cross-bureau intelligence aggregated from live records"
+        title="Reports &amp; Analytics"
+        sub="Compliance metrics, resolution throughput, and disposal trends"
         action={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs">
               <Printer size={14} />
-              <span>Print Dossier (PDF)</span>
+              <span>Print (PDF)</span>
             </Button>
             <Button
               variant="primary"
@@ -296,7 +296,7 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
               className="text-xs"
             >
               <Download size={14} />
-              <span>Download Dossier (CSV)</span>
+              <span>Export CSV</span>
             </Button>
           </div>
         }
@@ -369,7 +369,7 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
             >
               <RotateCcw size={12} />
-              <span>Reset Filters</span>
+              <span>Reset</span>
             </button>
           )}
           <Button
@@ -380,7 +380,7 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
             className="text-xs"
           >
             <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
-            <span>{isLoading ? 'Computing...' : 'Recalculate'}</span>
+            <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
           </Button>
         </div>
       </div>
@@ -391,24 +391,24 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
           <div className="flex items-center gap-2.5">
             <AlertCircle size={16} className="text-amber-700 shrink-0" />
             <span>
-              <strong>Analytics Service Notice:</strong> {apiError}. Reports are displaying client-side verified complaint counts.
+              Unable to reach analytics service ({apiError}). Showing local data.
             </span>
           </div>
           <button
             onClick={loadReportsAnalytics}
             className="text-amber-800 hover:text-amber-950 font-bold underline ml-4"
           >
-            Retry Connection
+            Retry
           </button>
         </div>
       )}
 
-      {/* Historical Data Limitation Notice (when real historical months are limited) */}
+      {/* Historical Data Notice */}
       {analytics?.dataNote && (
         <div className="flex items-center gap-2.5 rounded-lg border border-blue-200 bg-blue-50/80 px-4 py-2.5 text-xs text-blue-900 shadow-2xs">
           <Clock size={15} className="text-blue-700 shrink-0" />
           <span>
-            <strong>Data Scope Notice:</strong> {analytics.dataNote} Chart points strictly reflect verified database records.
+            <strong>Notice:</strong> {analytics.dataNote}
           </span>
         </div>
       )}
@@ -418,7 +418,7 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
           <div className="flex items-center gap-2.5">
             <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
             <span>
-              Real case data dossier successfully generated and downloaded as <strong>AICTE_Abhigyan_Compliance_Dossier_{TODAY}.csv</strong> ({totalCases} records). For printable PDF output, use the &quot;Print Dossier (PDF)&quot; feature.
+              Report exported successfully as <strong>AICTE_Abhigyan_Compliance_Dossier_{TODAY}.csv</strong> ({totalCases} records).
             </span>
           </div>
           <button
@@ -438,7 +438,7 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
           </div>
           <div>
             <div className="text-2xl font-bold text-slate-900">{totalCases}</div>
-            <div className="text-xs text-slate-500">Cumulative Registered Cases</div>
+            <div className="text-xs text-slate-500">Total Registered</div>
           </div>
         </Card>
 
@@ -448,7 +448,7 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
           </div>
           <div>
             <div className="text-2xl font-bold text-slate-900">{resolutionRate}%</div>
-            <div className="text-xs text-slate-500">Resolution Clearance Rate</div>
+            <div className="text-xs text-slate-500">Resolution Rate</div>
           </div>
         </Card>
 
@@ -458,11 +458,7 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
           </div>
           <div>
             <div className="text-2xl font-bold text-slate-900">{avgTurnaroundDisplay}</div>
-            <div className="text-xs text-slate-500">
-              {analytics?.kpis.avgTurnaroundDays !== null
-                ? 'Avg. Redressal Turnaround (real historical)'
-                : 'Avg. Redressal Turnaround (no closed cases)'}
-            </div>
+            <div className="text-xs text-slate-500">Average Resolution Time</div>
           </div>
         </Card>
 
@@ -474,8 +470,8 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
             <div className="text-2xl font-bold text-slate-900">{redundancyRateDisplay}</div>
             <div className="text-xs text-slate-500">
               {currentRole === 'Complainant'
-                ? 'Overlap Redundancy (restricted)'
-                : 'Overlap Redundancy Actioned'}
+                ? 'Overlap Resolution (Restricted)'
+                : 'Overlap Resolution Rate'}
             </div>
           </div>
         </Card>
@@ -486,8 +482,8 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
         {/* Category Breakdown */}
         <Card>
           <CardHeader
-            title="Grievance Subject Matter Classification"
-            sub="Distribution of complaints across key regulatory focus areas"
+            title="Grievance Categories"
+            sub="Distribution across grievance subject categories"
           />
           <div className="h-72 w-full">
             {categoryData.length === 0 ? (
@@ -529,8 +525,8 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
         {/* Resolution Status Distribution */}
         <Card>
           <CardHeader
-            title="Resolution Status Distribution"
-            sub="Active case progression and completion stage"
+            title="Status Distribution"
+            sub="Complaints by resolution stage"
           />
           <div className="h-72 w-full">
             {totalCases === 0 ? (
@@ -575,8 +571,8 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
         {/* Bureau-wise Stacked Bar Chart */}
         <Card className="lg:col-span-2">
           <CardHeader
-            title="Bureau-Wise Workload &amp; Resolution Status"
-            sub="Comparative volume and disposal efficiency across AICTE Bureaus"
+            title="Bureau Workload &amp; Status"
+            sub="Volume and disposal status across bureaus"
           />
           <div className="h-80 w-full pt-2">
             {totalCases === 0 ? (
@@ -617,8 +613,8 @@ export default function Reports({ complaints, currentRole, currentUser }: Report
         {/* Real Historical Intake vs Resolution Trend */}
         <Card>
           <CardHeader
-            title="Intake vs Closure Historical Trend"
-            sub="Aggregated from real database records (no fabricated or simulated data points)"
+            title="Filing vs Resolution Trend"
+            sub="Monthly complaint filing vs resolution trend"
           />
           <div className="h-80 w-full pt-2">
             {monthlyData.length === 0 ? (
