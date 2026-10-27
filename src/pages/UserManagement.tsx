@@ -384,8 +384,8 @@ export default function UserManagement({
   return (
     <div className="space-y-6">
       <PageTitle
-        title="AICTE Personnel & Bureau Officers"
-        sub="Authorised grievance investigators, bureau directors, and case handling officers"
+        title="User Management"
+        sub="Authorized officers, bureau administrators, and personnel directory"
         action={
           <div className="flex items-center gap-2">
             <Button
@@ -397,7 +397,7 @@ export default function UserManagement({
               className="text-xs"
             >
               <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
-              <span>{isLoading ? 'Syncing...' : 'Sync Directory'}</span>
+              <span>{isLoading ? 'Syncing...' : 'Sync'}</span>
             </Button>
 
             <Button
@@ -413,7 +413,7 @@ export default function UserManagement({
               className="text-xs"
             >
               <UserPlus size={14} />
-              <span>Add Official Account</span>
+              <span>Add User</span>
             </Button>
           </div>
         }

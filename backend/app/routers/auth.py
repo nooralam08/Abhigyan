@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
 
 from app.config import settings
 from app.database import get_db
@@ -23,7 +23,10 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 def get_user_profile_read(user: User, db: Session) -> UserProfileRead:
     """Build UserProfileRead schema including current active assigned cases count."""
     active_count = db.query(func.count(Complaint.id)).filter(
-        (Complaint.assigned_user_id == user.id) | (Complaint.officer == user.name),
+        or_(
+            Complaint.assigned_user_id == user.id,
+            and_(Complaint.assigned_user_id.is_(None), func.lower(Complaint.officer) == func.lower(user.name))
+        ),
         Complaint.status != "Resolved"
     ).scalar() or 0
 

@@ -190,10 +190,10 @@ def check_case_access(user: User, complaint: Complaint, action: str = "view") ->
                 detail="Handling Officers cannot directly reassign cases. Submit an explicit reassignment request through the workflow.",
             )
 
-        is_assigned = (
-            (complaint.officer and complaint.officer.strip().lower() == user.name.strip().lower())
-            or (complaint.assigned_user_id and complaint.assigned_user_id == user.id)
-        )
+        if complaint.assigned_user_id:
+            is_assigned = (complaint.assigned_user_id == user.id)
+        else:
+            is_assigned = bool(complaint.officer and complaint.officer.strip().lower() == user.name.strip().lower())
 
         if not is_assigned:
             raise HTTPException(

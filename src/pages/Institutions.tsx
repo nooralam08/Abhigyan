@@ -258,14 +258,14 @@ export default function Institutions({
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Institution Profile &amp; Cross-Bureau Dossier
+              Institutions Directory &amp; Dossier
             </h1>
             <span className="rounded-full bg-navy-50 px-2.5 py-0.5 text-xs font-semibold text-navy-800 border border-navy-200">
-              AICTE National Registry
+              National Registry
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Searchable institutional registry indexed by permanent AICTE code. Consolidates case histories across Regulation Bureau, PGRC, Approval, and Academic bureaus.
+            Institutional registry and cross-bureau grievance dossiers indexed by permanent AICTE ID.
           </p>
         </div>
 
@@ -278,7 +278,7 @@ export default function Institutions({
             className="text-xs"
           >
             <Building2 size={14} />
-            <span>Institution Directory ({institutions.length})</span>
+            <span>Directory</span>
           </Button>
 
           <Button
@@ -288,7 +288,7 @@ export default function Institutions({
             className="text-xs"
           >
             <FileText size={14} />
-            <span>Consolidated Profile</span>
+            <span>Profile View</span>
           </Button>
         </div>
       </div>

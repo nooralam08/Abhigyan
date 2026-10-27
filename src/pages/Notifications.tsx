@@ -53,8 +53,8 @@ export default function NotificationsPage({
   return (
     <div className="space-y-6">
       <PageTitle
-        title="System Notifications &amp; Alerts"
-        sub="Surveillance warnings, SLA expiration alerts, cross-bureau overlap detections, and compliance actions"
+        title="Notifications"
+        sub="Case updates, SLA notifications, and system alerts"
         action={
           unreadCount > 0 && (
             <Button
@@ -75,16 +75,16 @@ export default function NotificationsPage({
         {['All', 'Unread', 'alert', 'warning', 'info', 'success'].map((f) => {
           const label =
             f === 'All'
-              ? 'All Alerts'
+              ? 'All'
               : f === 'Unread'
               ? `Unread (${unreadCount})`
               : f === 'alert'
-              ? 'High Priority'
+              ? 'Alerts'
               : f === 'warning'
-              ? 'SLA Breaches'
+              ? 'SLA Alerts'
               : f === 'success'
-              ? 'Compliance Resolved'
-              : 'Informational'
+              ? 'Resolved'
+              : 'Info'
 
           return (
             <button
@@ -149,7 +149,7 @@ export default function NotificationsPage({
                         onClick={() => onOpenCase(n.caseId!)}
                         className="text-navy-700 font-semibold hover:underline flex items-center gap-1"
                       >
-                        <span>Open Related Case Dossier</span>
+                        <span>View Case</span>
                         <ExternalLink size={11} />
                       </button>
                     )}

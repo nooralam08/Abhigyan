@@ -231,15 +231,23 @@ export default function Dashboard({
     <div className="space-y-6">
       {/* Page Title & Scope Header */}
       <PageTitle
-        title="Grievance Surveillance &amp; Executive Dashboard"
+        title={
+          currentRole === 'Complainant'
+            ? 'My Grievance Dashboard'
+            : currentRole === 'Officer'
+            ? 'Officer Grievance Dashboard'
+            : currentRole === 'BureauAdmin'
+            ? `${currentUser?.bureau || 'Bureau'} Dashboard`
+            : 'Grievance Monitoring Dashboard'
+        }
         sub={
           currentRole === 'Complainant'
-            ? 'Track your registered grievance filings, resolution progress, and SLA status'
+            ? 'Track your registered grievance filings and resolution status'
             : currentRole === 'Officer'
             ? `Assigned grievance case surveillance for ${currentUser?.name || 'Officer'}`
             : currentRole === 'BureauAdmin'
             ? `Jurisdiction monitoring for ${currentUser?.bureau || 'Bureau'} Cell`
-            : 'AICTE Headquarters cross-bureau intelligence, statutory SLA surveillance, and case volume'
+            : 'Cross-bureau grievance monitoring, SLA compliance, and case volume'
         }
         action={
           <div className="flex items-center gap-2">
@@ -251,7 +259,7 @@ export default function Dashboard({
               className="text-xs flex items-center gap-1.5"
             >
               <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
-              <span>{isLoading ? 'Updating...' : 'Refresh Live Data'}</span>
+              <span>{isLoading ? 'Updating...' : 'Refresh'}</span>
             </Button>
           </div>
         }
@@ -324,19 +332,17 @@ export default function Dashboard({
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
             >
               <RotateCcw size={12} />
-              <span>Reset Filters</span>
+              <span>Reset</span>
             </button>
           )}
           <span className="text-xs font-medium text-slate-500">
             {isLoading ? (
               <span className="flex items-center gap-1.5 text-navy-700">
                 <Loader2 size={13} className="animate-spin" />
-                Aggregating live records...
+                Updating...
               </span>
-            ) : analytics ? (
-              <span className="text-slate-600">Aggregated: {totalCases} live verified case{totalCases === 1 ? '' : 's'}</span>
             ) : (
-              <span className="text-amber-700">Client-scoped fallback: {totalCases} case{totalCases === 1 ? '' : 's'}</span>
+              <span className="text-slate-600">Showing {totalCases} case{totalCases === 1 ? '' : 's'}</span>
             )}
           </span>
         </div>
@@ -348,14 +354,14 @@ export default function Dashboard({
           <div className="flex items-center gap-2.5">
             <AlertCircle size={16} className="text-amber-700 shrink-0" />
             <span>
-              <strong>Backend Notice:</strong> {apiError}. Active view is utilizing client-side cached complaint aggregates.
+              Unable to reach analytics service ({apiError}). Showing local data.
             </span>
           </div>
           <button
             onClick={loadAnalytics}
             className="text-amber-800 hover:text-amber-950 font-bold underline ml-4"
           >
-            Retry Connection
+            Retry
           </button>
         </div>
       )}
@@ -369,10 +375,10 @@ export default function Dashboard({
             </div>
             <div>
               <h4 className="text-sm font-bold">
-                {overdueCases} Case{overdueCases > 1 ? 's' : ''} Exceeded Statutory SLA Window
+                {overdueCases} Case{overdueCases > 1 ? 's' : ''} Past SLA Window
               </h4>
               <p className="text-xs text-red-700 mt-0.5">
-                Immediate review recommended for grievance files past statutory due dates relative to active reference date ({TODAY}).
+                Grievance files past resolution deadline as of {TODAY}.
               </p>
             </div>
           </div>
@@ -383,14 +389,14 @@ export default function Dashboard({
               onClick={() => onNavigate('tracking')}
               className="text-xs"
             >
-              Examine SLA Tracker
+              View Tracker
             </Button>
           </div>
         </div>
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Stat
           label="Total Complaints"
           value={totalCases}
@@ -410,12 +416,12 @@ export default function Dashboard({
           onClick={() => onNavigate('complaints')}
         />
         <Stat
-          label="Overdue / SLA Breached"
+          label="Overdue"
           value={overdueCases}
           icon={AlertTriangle}
           color="bg-rose-50 text-rose-700"
-          trend={overdueCases > 0 ? 'Critical' : 'Compliant'}
-          trendLabel={overdueCases > 0 ? 'Urgent attention' : 'Within SLA'}
+          trend={overdueCases > 0 ? 'Action Needed' : 'Compliant'}
+          trendLabel={overdueCases > 0 ? 'Past SLA' : 'Within SLA'}
           onClick={() => onNavigate('tracking')}
         />
         {currentRole !== 'Complainant' && (
@@ -424,8 +430,8 @@ export default function Dashboard({
             value={pendingOverlaps}
             icon={GitMerge}
             color="bg-indigo-50 text-indigo-700"
-            trend={pendingOverlaps > 0 ? 'High Match' : 'Cleared'}
-            trendLabel={pendingOverlaps > 0 ? 'RB ↔ PGRC pairs' : 'No duplicates'}
+            trend={pendingOverlaps > 0 ? `${pendingOverlaps} Pending` : 'Cleared'}
+            trendLabel={pendingOverlaps > 0 ? 'Review needed' : 'No duplicates'}
             onClick={() => onNavigate('overlaps')}
           />
         )}
@@ -439,7 +445,7 @@ export default function Dashboard({
           onClick={() => onNavigate('reports')}
         />
         <Stat
-          label="Critical / High Priority"
+          label="High & Critical"
           value={criticalHighCases}
           icon={Flame}
           color="bg-amber-50 text-amber-700"
@@ -454,8 +460,8 @@ export default function Dashboard({
         {/* Bureau Distribution Bar Chart */}
         <Card className="lg:col-span-2">
           <CardHeader
-            title="Bureau-Wise Complaint Case Distribution"
-            sub="Comparative analysis across RB (Regulation), PGRC (Public Grievance), Approval, Academic, SB and EO"
+            title="Bureau Case Distribution"
+            sub="Active complaints grouped by AICTE bureau"
             action={
               <Button
                 variant="outline"
@@ -463,7 +469,7 @@ export default function Dashboard({
                 onClick={() => onNavigate('reports')}
                 className="text-xs"
               >
-                Full Analytics &rarr;
+                View Reports
               </Button>
             }
           />
@@ -502,8 +508,8 @@ export default function Dashboard({
         {/* Priority Breakdown Pie Chart */}
         <Card>
           <CardHeader
-            title="Severity Distribution"
-            sub="Case priority breakdown across all active files"
+            title="Priority Breakdown"
+            sub="Distribution by case severity level"
           />
           <div className="h-56 w-full flex items-center justify-center">
             {totalCases === 0 ? (
@@ -561,16 +567,13 @@ export default function Dashboard({
                   <GitMerge size={14} />
                 </span>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Cross-Bureau Overlap Detection Engine Active
+                  Cross-Bureau Overlap Detection
                 </h3>
               </div>
               <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
-                Monitoring duplicate grievances filed across{' '}
-                <strong className="text-indigo-800">Regulation Bureau (RB)</strong> and{' '}
-                <strong className="text-teal-800">Public Grievance Redressal Cell (PGRC)</strong>.{' '}
                 {pendingOverlaps > 0
-                  ? `${pendingOverlaps} unreviewed ${pendingOverlaps === 1 ? 'overlap candidate' : 'overlap candidates'} awaiting officer action with matching confidence scores based on institutional and semantic analysis.`
-                  : 'All detected cross-bureau overlap records have been reviewed and processed.'}
+                  ? `${pendingOverlaps} unreviewed overlap ${pendingOverlaps === 1 ? 'candidate' : 'candidates'} detected across RB and PGRC requiring review.`
+                  : 'All detected cross-bureau overlap records have been reviewed.'}
               </p>
             </div>
             <Button
@@ -579,7 +582,7 @@ export default function Dashboard({
               onClick={() => onNavigate('overlaps')}
               className="text-xs flex items-center gap-1.5"
             >
-              <span>Review Overlaps ({pendingOverlaps})</span>
+              <span>Review Overlaps</span>
               <ArrowRight size={13} />
             </Button>
           </div>
@@ -590,9 +593,9 @@ export default function Dashboard({
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Recent Complaints &amp; Status</h3>
+            <h3 className="text-base font-bold text-slate-900">Recent Complaints</h3>
             <p className="text-xs text-slate-500">
-              Latest incoming files across technical institutions and AICTE cells in current scope
+              Latest grievance dockets in current scope
             </p>
           </div>
 
@@ -603,7 +606,7 @@ export default function Dashboard({
               onClick={() => onNavigate('complaints')}
               className="text-xs"
             >
-              All Complaints &rarr;
+              View All
             </Button>
           </div>
         </div>
@@ -611,7 +614,7 @@ export default function Dashboard({
         {recentCases.length === 0 ? (
           <div className="py-10 text-center">
             <FileText size={32} className="mx-auto text-slate-300 mb-2" />
-            <h4 className="text-sm font-semibold text-slate-700">No Complaints in Current Scope</h4>
+            <h4 className="text-sm font-semibold text-slate-700">No Complaints Found</h4>
             <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
               No complaint records match the active role permissions, bureau filter, or date range.
             </p>
@@ -622,7 +625,7 @@ export default function Dashboard({
                 onClick={handleResetFilters}
                 className="mt-3 text-xs"
               >
-                Reset Applied Filters
+                Reset Filters
               </Button>
             )}
           </div>

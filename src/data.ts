@@ -915,6 +915,86 @@ export const getOfficersForBureau = (bureau: Bureau | 'All'): string[] => {
   return Array.from(new Set([...base, ...customOfficers]))
 }
 
+/**
+ * Fair automatic least-loaded officer selection.
+ * Selects an eligible active handling officer for the specified bureau.
+ * - Counts active, unresolved complaints (status !== 'Resolved') for each eligible officer.
+ * - Chooses the officer with the lowest workload.
+ * - Deterministic tie-breaker: officer least recently assigned a case, then officer.id.
+ * - Excludes inactive / on-leave officers and wrong-bureau officers.
+ * - Never defaults to Rajesh Kumar.
+ * - Returns { officer: 'Unassigned', assignedUserId: undefined } if no eligible officer exists.
+ */
+export const getLeastLoadedOfficer = (
+  bureau: Bureau | string,
+  complaintsList: Complaint[] = [],
+  usersList: UserProfile[] = userProfiles
+): { officer: string; assignedUserId?: string } => {
+  const normBureau = bureau.trim().toUpperCase()
+
+  // 1. Filter eligible active handling officers for this bureau
+  const eligible = usersList.filter(
+    (u) =>
+      u.role === 'Officer' &&
+      u.status === 'Active' &&
+      (u.bureau === 'All' || u.bureau.toUpperCase() === normBureau)
+  )
+
+  if (eligible.length === 0) {
+    return { officer: 'Unassigned', assignedUserId: undefined }
+  }
+
+  // 2. Count unresolved complaints and latest assignment timestamp for each eligible officer
+  const officerStats = eligible.map((officer) => {
+    let workload = 0
+    let lastAssignedTime = -1
+
+    if (complaintsList.length > 0) {
+      const assignedComplaints = complaintsList.filter((c) => {
+        if (c.assignedUserId) {
+          return c.assignedUserId === officer.id
+        }
+        return (
+          (c.officer && c.officer.toLowerCase() === officer.name.toLowerCase()) ||
+          resolveOfficerName(c, usersList).toLowerCase() === officer.name.toLowerCase()
+        )
+      })
+
+      const unresolved = assignedComplaints.filter((c) => c.status !== 'Resolved')
+      workload = unresolved.length
+
+      for (const c of assignedComplaints) {
+        const d = c.date ? new Date(c.date).getTime() : 0
+        if (d > lastAssignedTime) {
+          lastAssignedTime = d
+        }
+      }
+    } else {
+      workload = officer.activeCasesCount || 0
+    }
+
+    return {
+      officer,
+      workload,
+      lastAssignedTime,
+    }
+  })
+
+  // 3. Sort: lowest workload first, then earliest lastAssignedTime (least recently assigned), then deterministic officer.id
+  officerStats.sort((a, b) => {
+    if (a.workload !== b.workload) {
+      return a.workload - b.workload
+    }
+    if (a.lastAssignedTime !== b.lastAssignedTime) {
+      return a.lastAssignedTime - b.lastAssignedTime
+    }
+    return a.officer.id.localeCompare(b.officer.id)
+  })
+
+  const chosen = officerStats[0].officer
+  return { officer: chosen.name, assignedUserId: chosen.id }
+}
+
 // Permitted status transitions per workflow rules
 export const PERMITTED_STATUS_TRANSITIONS: Record<Status, Status[]> = {
   Pending: ['In Progress', 'Escalated'],
@@ -1068,10 +1148,12 @@ export const canUpdateCaseStatus = (
 
   if (user.role === 'Officer') {
     // 1. Authorized case check - Officer can only mutate explicitly assigned cases
-    const isAssigned =
-      complaint.officer === user.name ||
-      resolveOfficerName(complaint) === user.name ||
-      Boolean(user.id && complaint.assignedUserId === user.id)
+    const isAssigned = complaint.assignedUserId
+      ? Boolean(user.id && complaint.assignedUserId === user.id)
+      : (
+          complaint.officer === user.name ||
+          resolveOfficerName(complaint) === user.name
+        )
     if (!isAssigned) {
       return {
         allowed: false,
@@ -1167,10 +1249,16 @@ export const canViewComplaint = (
     }
   }
   if (user.role === 'Officer') {
+    if (complaint.assignedUserId) {
+      if (user.id && complaint.assignedUserId === user.id) return { allowed: true }
+      return {
+        allowed: false,
+        reason: `Handling Officer is not assigned to docket ${complaint.id}.`,
+      }
+    }
     if (
       complaint.officer === user.name ||
-      resolveOfficerName(complaint) === user.name ||
-      Boolean(user.id && complaint.assignedUserId === user.id)
+      resolveOfficerName(complaint) === user.name
     ) {
       return { allowed: true }
     }
@@ -1212,10 +1300,16 @@ export const canAddCaseRemarks = (
     }
   }
   if (user.role === 'Officer') {
+    if (complaint.assignedUserId) {
+      if (user.id && complaint.assignedUserId === user.id) return { allowed: true }
+      return {
+        allowed: false,
+        reason: `Restricted: Handling Officer is not assigned to docket ${complaint.id}.`,
+      }
+    }
     if (
       complaint.officer === user.name ||
-      resolveOfficerName(complaint) === user.name ||
-      Boolean(user.id && complaint.assignedUserId === user.id)
+      resolveOfficerName(complaint) === user.name
     ) {
       return { allowed: true }
     }

@@ -1,6 +1,7 @@
 import logging
 import math
 import random
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
@@ -68,15 +69,127 @@ def get_sla_days(priority: str, db: Optional[Session] = None) -> int:
         return 21
     return 14
 
-def get_default_officer(bureau: str) -> str:
-    b = bureau.upper()
-    if b == "RB":
-        return "Anita Verma"
-    elif b in ("APPROVAL", "SB"):
-        return "Suresh Patel"
-    elif b == "ACADEMIC":
-        return "Meera Iyer"
-    return "Rajesh Kumar"
+_assignment_lock = threading.Lock()
+
+def assign_least_loaded_officer(db: Session, bureau: str) -> Optional[User]:
+    """
+    Select an eligible active handling officer using least-loaded assignment.
+    1. Filter users with role='Officer', status='Active', and bureau matching complaint's bureau (or 'All').
+    2. Count currently assigned, unresolved complaints (status != 'Resolved') for each eligible officer.
+    3. Choose the officer with the lowest workload.
+    4. Deterministic tie-breaker: officer least recently assigned a case (by Complaint.created_at timestamp),
+       then deterministic by officer.id.
+    5. Returns None if no active eligible officer exists.
+    """
+    bureau_clean = bureau.strip().upper()
+    try:
+        users_query = db.query(User).filter(
+            User.role == "Officer",
+            func.lower(User.status) == "active",
+            or_(func.upper(User.bureau) == bureau_clean, func.upper(User.bureau) == "ALL")
+        )
+        raw_users = users_query.all()
+    except Exception:
+        try:
+            raw_users = db.query(User).all()
+        except Exception:
+            raw_users = []
+
+    # In-memory safety filter in case mock DB session does not evaluate SQL filters
+    eligible_officers = [
+        u for u in raw_users
+        if getattr(u, "role", None) == "Officer"
+        and (getattr(u, "status", None) or "").lower() == "active"
+        and (getattr(u, "bureau", None) or "").upper() in (bureau_clean, "ALL")
+    ]
+
+    if not eligible_officers:
+        return None
+
+    # Fetch complaints to compute workload and last assignment time
+    try:
+        complaints_query = db.query(Complaint).filter(
+            func.lower(Complaint.status) != "resolved"
+        )
+        unresolved_complaints = complaints_query.all()
+    except Exception:
+        try:
+            unresolved_complaints = [
+                c for c in db.query(Complaint).all()
+                if (getattr(c, "status", None) or "").lower() != "resolved"
+            ]
+        except Exception:
+            unresolved_complaints = []
+
+    try:
+        all_complaints_query = db.query(Complaint)
+        all_complaints = all_complaints_query.all()
+    except Exception:
+        all_complaints = unresolved_complaints
+
+    officer_stats = []
+    for officer in eligible_officers:
+        # 1. Count unresolved complaints assigned to this officer
+        matching_unresolved = [
+            c for c in unresolved_complaints
+            if (
+                getattr(c, "assigned_user_id", None) == officer.id
+                or (not getattr(c, "assigned_user_id", None) and (getattr(c, "officer", "") or "").lower() == officer.name.lower())
+            )
+            and (getattr(c, "status", "") or "").lower() != "resolved"
+        ]
+        workload = len(matching_unresolved)
+
+        # 2. Find latest assignment timestamp for deterministic rotating tie-breaker
+        officer_all_assigned = [
+            c for c in all_complaints
+            if (
+                getattr(c, "assigned_user_id", None) == officer.id
+                or (not getattr(c, "assigned_user_id", None) and (getattr(c, "officer", "") or "").lower() == officer.name.lower())
+            )
+        ]
+
+        last_ts = -1.0
+        if officer_all_assigned:
+            timestamps = []
+            for c in officer_all_assigned:
+                created_dt = getattr(c, "created_at", None)
+                if created_dt is not None:
+                    if hasattr(created_dt, "tzinfo") and created_dt.tzinfo is not None:
+                        timestamps.append(created_dt.timestamp())
+                    elif isinstance(created_dt, datetime):
+                        timestamps.append(created_dt.replace(tzinfo=timezone.utc).timestamp())
+                    elif isinstance(created_dt, str):
+                        try:
+                            timestamps.append(datetime.fromisoformat(created_dt).timestamp())
+                        except Exception:
+                            pass
+                date_str = getattr(c, "date", None)
+                if date_str and isinstance(date_str, str):
+                    try:
+                        timestamps.append(datetime.strptime(date_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
+                    except Exception:
+                        pass
+            if timestamps:
+                last_ts = max(timestamps)
+
+        officer_stats.append((workload, last_ts, str(officer.id), officer))
+
+    # Sort by minimum workload first, then earliest last assignment (least recently assigned first), then officer.id
+    officer_stats.sort(key=lambda item: (item[0], item[1], item[2]))
+    return officer_stats[0][3]
+
+def get_default_officer(bureau: str, db: Optional[Session] = None) -> str:
+    """
+    Backwards compatibility helper: resolves default officer name.
+    Delegates to fair least-loaded automatic assignment if db session is provided;
+    otherwise returns neutral 'Unassigned'. Never hardcodes Rajesh Kumar.
+    """
+    if db is not None:
+        officer = assign_least_loaded_officer(db, bureau)
+        if officer:
+            return officer.name
+    return "Unassigned"
 
 def get_default_next_action(status_val: str, bureau: str) -> str:
     s = status_val.lower()
@@ -186,29 +299,63 @@ def create_complaint(
                 detail=f"Complaint with Case ID '{case_id}' already exists."
             )
 
-    # 3. Default Officer & User assignment - Safe bureau-based assignment
-    if current_user and current_user.role in ("Admin", "BureauAdmin"):
-        if current_user.role == "BureauAdmin" and current_user.bureau != "All":
-            if complaint_in.officer and complaint_in.officer.strip():
-                candidate_officer = complaint_in.officer.strip()
-                cand_user = db.query(User).filter(User.name == candidate_officer).first()
-                if cand_user and cand_user.bureau != "All" and cand_user.bureau.upper() != current_user.bureau.upper():
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Restricted: Bureau Admin cannot assign case to officer in {cand_user.bureau} Bureau."
-                    )
-                officer_name = candidate_officer
-            else:
-                officer_name = get_default_officer(complaint_in.bureau)
-        else:
-            # System Admin
-            officer_name = complaint_in.officer.strip() if complaint_in.officer and complaint_in.officer.strip() else get_default_officer(complaint_in.bureau)
-    else:
-        # Complainants or public unauthenticated submissions MUST NEVER self-assign officers
-        officer_name = get_default_officer(complaint_in.bureau)
+    # 3. Officer assignment - Authoritative server-side assignment
+    assigned_user: Optional[User] = None
+    officer_name: str = "Unassigned"
+    assigned_user_id: Optional[str] = None
 
-    assigned_user = db.query(User).filter(User.name == officer_name).first()
-    assigned_user_id = assigned_user.id if assigned_user else None
+    with _assignment_lock:
+        if current_user and current_user.role in ("Admin", "BureauAdmin"):
+            # Check if an explicit authorized manual assignment was requested
+            req_officer = complaint_in.officer.strip() if complaint_in.officer and complaint_in.officer.strip() else None
+            if req_officer and req_officer.lower() != "unassigned":
+                cand_user = db.query(User).filter(User.name.ilike(req_officer)).first()
+                if not cand_user:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Officer '{req_officer}' was not found in AICTE user registry."
+                    )
+                if cand_user.status and cand_user.status.lower() != "active":
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Officer '{cand_user.name}' is inactive and cannot be assigned cases."
+                    )
+                if cand_user.role not in ("Officer", "BureauAdmin", "Admin"):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"User '{cand_user.name}' has role '{cand_user.role}' and is not eligible for case assignment."
+                    )
+                if current_user.role == "BureauAdmin" and current_user.bureau != "All":
+                    if cand_user.bureau != "All" and cand_user.bureau.upper() != current_user.bureau.upper():
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"Restricted: Bureau Admin cannot assign case to officer in {cand_user.bureau} Bureau."
+                        )
+                assigned_user = cand_user
+                officer_name = cand_user.name
+                assigned_user_id = cand_user.id
+            elif req_officer and req_officer.lower() == "unassigned":
+                assigned_user = None
+                officer_name = "Unassigned"
+                assigned_user_id = None
+            else:
+                assigned_user = assign_least_loaded_officer(db, complaint_in.bureau)
+                if assigned_user:
+                    officer_name = assigned_user.name
+                    assigned_user_id = assigned_user.id
+                else:
+                    officer_name = "Unassigned"
+                    assigned_user_id = None
+        else:
+            # Complainants or public unauthenticated submissions MUST NEVER self-assign officers.
+            # Perform server-side fair least-loaded automatic distribution.
+            assigned_user = assign_least_loaded_officer(db, complaint_in.bureau)
+            if assigned_user:
+                officer_name = assigned_user.name
+                assigned_user_id = assigned_user.id
+            else:
+                officer_name = "Unassigned"
+                assigned_user_id = None
 
     # 4. Complainant identity verification: Never trust client to spoof identity
     if current_user.role == "Complainant":
@@ -316,13 +463,21 @@ def create_complaint(
 
         allocation_by = f"{current_user.name} ({current_user.designation})" if current_user.role != "Complainant" else "Central Allocation Engine"
         allocation_role = current_user.role if current_user.role != "Complainant" else "Admin"
+
+        if assigned_user:
+            timeline_label = f"Assigned to {officer_name} ({new_complaint.bureau} Bureau)"
+            timeline_note = f"Initial statutory assignment to {new_complaint.bureau} Bureau based on category: {new_complaint.category}."
+        else:
+            timeline_label = f"Case registered in {new_complaint.bureau} Bureau (Pending Officer Allocation)"
+            timeline_note = f"Initial statutory intake to {new_complaint.bureau} Bureau. No active handling officer currently available; pending administrative allocation."
+
         event_allocation = ComplaintTimeline(
             complaint_id=new_complaint.id,
-            label=f"Assigned to {officer_name} ({new_complaint.bureau} Bureau)",
+            label=timeline_label,
             date=f"{date_val} {now_hm}",
             by=allocation_by,
             role=allocation_role,
-            note=f"Initial statutory assignment to {new_complaint.bureau} Bureau based on category: {new_complaint.category}.",
+            note=timeline_note,
             user_id=assigned_user_id,
         )
         db.add(event_allocation)
@@ -738,6 +893,7 @@ def update_complaint_status(
 
     return map_complaint_to_read(complaint)
 
+@router.put("/{id}/assign", response_model=ComplaintRead)
 @router.patch("/{id}/assign", response_model=ComplaintRead)
 @router.post("/{id}/assign", response_model=ComplaintRead)
 def assign_complaint(
@@ -814,27 +970,36 @@ def assign_complaint(
 
     # 2. Or resolve by officer name if provided
     elif payload.officer and payload.officer.strip():
-        resolved_user = db.query(User).filter(User.name.ilike(payload.officer.strip())).first()
-        if not resolved_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Officer '{payload.officer}' was not found in AICTE user registry."
-            )
-        if resolved_user.status.lower() != "active":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Officer '{resolved_user.name}' is inactive and cannot be assigned cases."
-            )
-        if current_user.role == "BureauAdmin" and current_user.bureau != "All":
-            if resolved_user.bureau != "All" and resolved_user.bureau.upper() != current_user.bureau.upper():
+        if payload.officer.strip().lower() == "unassigned":
+            target_officer = "Unassigned"
+            target_user_id = None
+        else:
+            resolved_user = db.query(User).filter(User.name.ilike(payload.officer.strip())).first()
+            if not resolved_user:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Restricted: Bureau Admin cannot assign case to officer in {resolved_user.bureau} Bureau.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Officer '{payload.officer}' was not found in AICTE user registry."
                 )
-        target_officer = resolved_user.name
-        target_user_id = resolved_user.id
-        if not payload.bureau and not payload.preserveBureau and resolved_user.bureau != "All":
-            target_bureau = resolved_user.bureau
+            if resolved_user.status.lower() != "active":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Officer '{resolved_user.name}' is inactive and cannot be assigned cases."
+                )
+            if resolved_user.role not in ("Officer", "BureauAdmin", "Admin"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"User '{resolved_user.name}' has role '{resolved_user.role}' and is not eligible for case assignment."
+                )
+            if current_user.role == "BureauAdmin" and current_user.bureau != "All":
+                if resolved_user.bureau != "All" and resolved_user.bureau.upper() != current_user.bureau.upper():
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Restricted: Bureau Admin cannot assign case to officer in {resolved_user.bureau} Bureau.",
+                    )
+            target_officer = resolved_user.name
+            target_user_id = resolved_user.id
+            if not payload.bureau and not payload.preserveBureau and resolved_user.bureau != "All":
+                target_bureau = resolved_user.bureau
 
     prev_officer = complaint.officer
     prev_bureau = complaint.bureau

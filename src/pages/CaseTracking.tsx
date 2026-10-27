@@ -63,10 +63,12 @@ export default function CaseTracking({
       )
     }
     if (currentRole === 'Officer') {
+      if (c.assignedUserId) {
+        return Boolean(currentUser?.id && c.assignedUserId === currentUser.id)
+      }
       return (
         c.officer === currentUser?.name ||
-        resolveOfficerName(c) === currentUser?.name ||
-        Boolean(currentUser?.id && c.assignedUserId === currentUser.id)
+        resolveOfficerName(c) === currentUser?.name
       )
     }
     if (currentRole === 'BureauAdmin') {
@@ -170,11 +172,11 @@ export default function CaseTracking({
       <PageTitle
         title={
           currentRole === 'Complainant'
-            ? 'Track My Grievance Lifecycle'
-            : 'Live Case Tracking &amp; SLA Surveillance'
+            ? 'Track My Grievance'
+            : 'Case Tracking &amp; SLA Status'
         }
-        sub="Monitor lifecycle progression, inquiry milestones, and statutory resolution compliance for any case file"
-        tag={currentRole === 'Complainant' ? 'Citizen SLA Tracker' : 'SLA Monitor'}
+        sub="Track milestone progression, inquiry status, and statutory resolution deadlines"
+        tag={currentRole === 'Complainant' ? 'Citizen Tracker' : 'SLA Monitor'}
       />
 
       {/* Case Selector and Search */}
@@ -183,8 +185,8 @@ export default function CaseTracking({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               {currentRole === 'Complainant'
-                ? 'Select One of Your Dockets to Track:'
-                : 'Select or Search Complaint Case:'}
+                ? 'Select Grievance:'
+                : 'Select Case:'}
             </span>
             <div className="w-72">
               <SearchBox
@@ -277,7 +279,7 @@ export default function CaseTracking({
                   className="text-xs"
                 >
                   <Eye size={13} />
-                  <span>Full Case File</span>
+                  <span>View Case</span>
                 </Button>
               </div>
             </div>

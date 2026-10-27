@@ -37,48 +37,48 @@ interface TopBarProps {
 
 const PAGE_META: Record<Page, { title: string; subtitle: string }> = {
   dashboard: {
-    title: 'Executive Dashboard',
-    subtitle: 'Consolidated AICTE complaint monitoring, SLA surveillance & bureau distribution',
+    title: 'Dashboard',
+    subtitle: 'Consolidated grievance monitoring, SLA surveillance, and bureau distribution',
   },
   complaints: {
-    title: 'All Complaints Directory',
-    subtitle: 'Search, filter, track and update cases across AICTE bureaus (RB, PGRC, Approval)',
+    title: 'Complaints Directory',
+    subtitle: 'Search, filter, track, and update grievance dockets',
   },
   submit: {
-    title: 'Grievance Submission Portal',
-    subtitle: 'File formal complaints against technical institutions with automated Permanent ID verification',
+    title: 'Grievance Submission',
+    subtitle: 'File formal complaints with AICTE Permanent ID verification',
   },
   details: {
-    title: 'Case File Details',
-    subtitle: 'Comprehensive audit trail, institution profile, evidence and timeline',
+    title: 'Case Details',
+    subtitle: 'Audit trail, institution profile, evidence, and timeline',
   },
   institutions: {
-    title: 'Institutions Roster & Risk Profiles',
-    subtitle: 'Accredited technical institutes, colleges and their historic complaint density',
+    title: 'Institutions Directory',
+    subtitle: 'Accredited technical institutes and consolidated grievance history',
   },
   overlaps: {
-    title: 'Cross-Bureau Overlap Detection',
-    subtitle: 'Algorithmic duplication check flagging parallel complaints filed with RB & PGRC',
+    title: 'Cross-Bureau Overlaps',
+    subtitle: 'Automated detection of parallel complaints across bureaus',
   },
   tracking: {
-    title: 'Live Case Tracking & SLA Tracker',
-    subtitle: 'Timeline lifecycle progression, milestone checks, and statutory resolution compliance',
+    title: 'Case Tracking & SLA',
+    subtitle: 'Lifecycle progression, milestone verification, and resolution deadlines',
   },
   reports: {
-    title: 'Reports, Trends & Data Analytics',
-    subtitle: 'Visual analytics, bureau resolution metrics and statutory compliance reporting',
+    title: 'Reports & Analytics',
+    subtitle: 'Disposal metrics, resolution throughput, and compliance trends',
   },
   notifications: {
-    title: 'System Notifications & Alerts',
-    subtitle: 'Urgent SLA breaches, high-confidence overlaps, and bureau escalations',
+    title: 'Notifications',
+    subtitle: 'SLA warnings, overlap alerts, and case updates',
   },
   users: {
-    title: 'AICTE Personnel & Bureau Officers',
-    subtitle: 'Officer registry, active assignments, bureau allocation and workload capacity',
+    title: 'User Management',
+    subtitle: 'Authorized officers, bureau administrators, and personnel directory',
   },
   settings: {
-    title: 'System & Bureau Settings',
-    subtitle: 'Configure SLA thresholds, overlap similarity tolerance, and AICTE compliance rules',
+    title: 'System Settings',
+    subtitle: 'Configure SLA thresholds, overlap tolerance, and compliance rules',
   },
 }
 
@@ -382,7 +382,7 @@ export default function TopBar({
                         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-slate-100 transition"
                       >
                         <User size={15} className="text-slate-400" />
-                        <span>Officer Directory</span>
+                        <span>User Management</span>
                       </button>
                       {currentRole === 'Admin' && (
                         <button
@@ -409,14 +409,14 @@ export default function TopBar({
                         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-rose-700 hover:bg-rose-50 transition font-medium"
                       >
                         <LogOut size={15} className="text-rose-600" />
-                        <span>Sign Out / Role Switch</span>
+                        <span>Sign Out</span>
                       </button>
                     </div>
                   )}
 
                   <div className="pt-1">
                     <div className="px-3 py-2 text-[10px] text-slate-400 leading-tight">
-                      Abhigyan • AICTE Complaint Monitoring &amp; Cross-Bureau Redressal Platform
+                      Abhigyan • AICTE Redressal Portal
                     </div>
                   </div>
                 </div>
