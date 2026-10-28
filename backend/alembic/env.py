@@ -39,18 +39,33 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.sqlalchemy_database_url
+    connectable = config.attributes.get("connection", None)
 
-    connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    if connectable is None:
+        configuration = config.get_section(config.config_ini_section) or {}
+        configuration["sqlalchemy.url"] = settings.sqlalchemy_database_url
 
-    with connectable.connect() as connection:
+        connectable = engine_from_config(
+            configuration,
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+        )
+
+    from sqlalchemy.engine import Connection
+    if isinstance(connectable, Connection):
+        from contextlib import nullcontext
+        connection_ctx = nullcontext(connectable)
+    elif hasattr(connectable, "connect"):
+        connection_ctx = connectable.connect()
+    else:
+        from contextlib import nullcontext
+        connection_ctx = nullcontext(connectable)
+
+    with connection_ctx as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
         )
 
         with context.begin_transaction():

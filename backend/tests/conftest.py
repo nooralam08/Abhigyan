@@ -1,6 +1,10 @@
 import sys
 import os
 import pytest
+
+# Ensure standard test executions do not attempt connecting to live DB on lifespan
+os.environ.setdefault("SKIP_STARTUP_DB_INIT", "1")
+
 from fastapi.testclient import TestClient
 
 # Add backend directory to sys.path

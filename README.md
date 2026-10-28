@@ -205,8 +205,12 @@ cd Abhigyan
    python backend/ml/evaluate_model.py
    ```
 
-8. Start FastAPI backend server:
+8. Initialize Database and Start FastAPI backend server:
    ```powershell
+   # Run safe database migrations and baseline seeding
+   python backend/init_db.py
+
+   # Start server
    cd backend
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
@@ -216,6 +220,26 @@ cd Abhigyan
    - Interactive Swagger API Docs: `http://localhost:8000/docs`
    - ReDoc Documentation: `http://localhost:8000/redoc`
    - Health Check: `http://localhost:8000/api/health`
+
+### Production Deployment (Render + Supabase PostgreSQL)
+
+When deploying to Render Web Services:
+1. **Environment Variables**:
+   - `DATABASE_URL`: `postgresql+psycopg2://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@[YOUR-POOLER-HOST]:5432/postgres?sslmode=require` (or session pooler on port 6543 / direct port 5432).
+   - `CORS_ORIGINS`: `https://abhigyann.vercel.app,http://localhost:5173`
+   - `ENVIRONMENT`: `production`
+2. **Render Build Command**:
+   ```bash
+   pip install -r backend/requirements.txt && python backend/init_db.py
+   ```
+3. **Render Start Command**:
+   ```bash
+   uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT
+   ```
+4. **Automated Redundancy**:
+   - `python backend/init_db.py` can be executed during build/release or as a one-off Render SSH/Shell task.
+   - FastAPI's `lifespan` handler automatically checks and applies pending Alembic migrations (`head`) and baseline seed data on container boot if not already applied.
+   - Run `python backend/check_db.py` to diagnose connectivity and verify table existence.
 
 ---
 

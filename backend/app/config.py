@@ -62,6 +62,8 @@ class Settings(BaseSettings):
         url = make_url(self.DATABASE_URL)
         if url.drivername in {"postgres", "postgresql"}:
             url = url.set(drivername="postgresql+psycopg2")
+        elif url.drivername == "sqlite" or url.drivername.startswith("sqlite"):
+            return url
         elif url.drivername != "postgresql+psycopg2":
             raise ValueError("DATABASE_URL must use PostgreSQL (postgresql:// or postgresql+psycopg2://).")
 

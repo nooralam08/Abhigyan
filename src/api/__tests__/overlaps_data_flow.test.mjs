@@ -150,8 +150,27 @@ test('Overlaps Regression: Role authorization permits BureauAdmin and Admin, blo
   assert.equal(checkAuth('Complainant'), false, 'Complainant must NOT be authorized to review overlaps')
 })
 
-test('Overlaps Regression: LIVE BACKEND API - GET /api/overlaps returns authentic data for Admin and BureauAdmin', async () => {
-  const adminLogin = await fetch('http://127.0.0.1:8000/api/auth/demo-login', {
+const BASE_URL = process.env.VITE_API_BASE_URL || process.env.VITE_API_URL || 'https://abhigyann.onrender.com/api'
+
+test('Overlaps Regression: LIVE BACKEND API - GET /api/overlaps returns authentic data for Admin and BureauAdmin', async (t) => {
+  let isServerUp = false
+  try {
+    const healthRes = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(1500) })
+    if (healthRes.status === 200) {
+      const health = await healthRes.json()
+      if (health.status === 'healthy') {
+        isServerUp = true
+      }
+    }
+  } catch {
+    isServerUp = false
+  }
+
+  if (!isServerUp) {
+    return t.skip('Live FastAPI backend server not reachable at ' + BASE_URL)
+  }
+
+  const adminLogin = await fetch(`${BASE_URL}/auth/demo-login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ role: 'Admin' }),
@@ -159,7 +178,7 @@ test('Overlaps Regression: LIVE BACKEND API - GET /api/overlaps returns authenti
 
   assert.ok(adminLogin.accessToken, 'Admin demo login must succeed')
 
-  const overlapsRes = await fetch('http://127.0.0.1:8000/api/overlaps', {
+  const overlapsRes = await fetch(`${BASE_URL}/overlaps`, {
     headers: { Authorization: `Bearer ${adminLogin.accessToken}` },
   })
   assert.equal(overlapsRes.status, 200, 'GET /api/overlaps must return HTTP 200 for Admin')
@@ -176,7 +195,7 @@ test('Overlaps Regression: LIVE BACKEND API - GET /api/overlaps returns authenti
   assert.ok(first.status, 'Status must be defined')
 
   // Test Bureau Admin login and retrieval
-  const baLogin = await fetch('http://127.0.0.1:8000/api/auth/demo-login', {
+  const baLogin = await fetch(`${BASE_URL}/auth/demo-login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ role: 'BureauAdmin', userId: 'u1b' }),
@@ -184,7 +203,7 @@ test('Overlaps Regression: LIVE BACKEND API - GET /api/overlaps returns authenti
 
   assert.ok(baLogin.accessToken, 'Bureau Admin demo login must succeed')
 
-  const baOverlapsRes = await fetch('http://127.0.0.1:8000/api/overlaps', {
+  const baOverlapsRes = await fetch(`${BASE_URL}/overlaps`, {
     headers: { Authorization: `Bearer ${baLogin.accessToken}` },
   })
   assert.equal(baOverlapsRes.status, 200, 'GET /api/overlaps must return HTTP 200 for Bureau Admin')

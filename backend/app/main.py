@@ -1,3 +1,7 @@
+import sys
+import os
+import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
@@ -10,12 +14,39 @@ from app.routers.settings import router as settings_router
 from app.routers.users import router as users_router
 from app.routers.analytics import router as analytics_router
 
+logger = logging.getLogger("abhigyan.app")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan handler: automatically verifies connectivity, runs Alembic migrations
+    to head, and ensures required tables and baseline seed data exist on container startup.
+    """
+    import os
+    if os.environ.get("SKIP_STARTUP_DB_INIT") == "1":
+        logger.info("Startup database initialization skipped via SKIP_STARTUP_DB_INIT")
+        yield
+        return
+
+    try:
+        from app.init_db import init_database
+        logger.info("Verifying and initializing database schema on startup...")
+        init_database(seed=True, raise_on_error=False)
+    except Exception as exc:
+        logger.warning("Startup database initialization notification: %s", exc)
+    yield
+
+
+is_testing = "pytest" in sys.modules or os.environ.get("TESTING") == "1"
+
 app = FastAPI(
     title="Abhigyan AICTE Complaint Monitoring & Tracking API",
     description="Backend API for AICTE Institution Complaint Monitoring, SLA Surveillance & Cross-Bureau Redressal",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=None if is_testing else lifespan,
 )
 
 # Configure CORS for local Vite development and preview servers
