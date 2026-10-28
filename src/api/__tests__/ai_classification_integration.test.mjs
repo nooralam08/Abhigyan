@@ -6,7 +6,7 @@
 import { test, describe, before } from 'node:test'
 import assert from 'node:assert/strict'
 
-const BASE_URL = process.env.VITE_API_URL || 'http://localhost:8000/api'
+const BASE_URL = process.env.VITE_API_BASE_URL || process.env.VITE_API_URL || 'https://abhigyann.onrender.com/api'
 
 let isServerUp = false
 

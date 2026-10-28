@@ -229,9 +229,9 @@ Open a new PowerShell terminal at the project root (`Abhigyan/`):
    ```
 
 2. (Optional) Configure API Base URL:
-   Defaults to `http://localhost:8000/api`. To customize, create a `.env` in the root:
+   Defaults to `https://abhigyann.onrender.com/api` (Production Render backend). To customize for local development, create a `.env` in the root:
    ```ini
-   VITE_API_URL=http://localhost:8000/api
+   VITE_API_BASE_URL=http://localhost:8000/api
    ```
 
 3. Start development server:

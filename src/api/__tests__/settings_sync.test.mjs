@@ -17,7 +17,7 @@ import {
 } from '../../data.ts'
 import { ApiError } from '../client.ts'
 
-const BASE_URL = process.env.VITE_API_URL || 'http://localhost:8000/api'
+const BASE_URL = process.env.VITE_API_BASE_URL || process.env.VITE_API_URL || 'https://abhigyann.onrender.com/api'
 let isServerUp = false
 
 describe('Abhigyan Phase 3: Settings & Threshold Regression Suite', () => {

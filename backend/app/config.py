@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         description="Supabase PostgreSQL connection URL from the project Connect dialog"
     )
     CORS_ORIGINS: str = Field(
-        default="http://localhost:5173,http://localhost:4173",
+        default="http://localhost:5173,http://localhost:4173,https://abhigyann.vercel.app",
         description="Comma-separated allowed CORS origins"
     )
     ENVIRONMENT: str = Field(

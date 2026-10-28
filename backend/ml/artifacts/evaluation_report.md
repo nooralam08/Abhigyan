@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **PROTOTYPE / DEMO-ONLY BENCHMARK**: This evaluation was conducted strictly on 180 synthetic complaints generated for prototype development. Metrics reflect synthetic lexical distributions and **must not be used to claim production readiness**.
 
-- **Evaluation Timestamp:** `2026-10-26T20:34:02.301231+00:00`
+- **Evaluation Timestamp:** `2026-10-27T20:16:57.503809+00:00`
 - **Model Architecture:** TF-IDF Vectorizer (ngram 1-2, 5k max features) + Logistic Regression (L-BFGS)
 - **Evaluation Dataset:** 180 samples (Train: 144 [80%], Held-out Test: 36 [20%])
 - **Stratification:** Stratified across 9 complaint categories with fixed seed (`random_state=42`), zero data leakage
